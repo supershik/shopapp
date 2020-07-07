@@ -159,7 +159,7 @@ const CartStackScreen = ({ navigation }) => {
 const OrderHistoryStackScreen = ({ navigation }) => {
   return (
     <Stack.Navigator>
-      <Stack.Screen
+      {/* <Stack.Screen
         name="Order History"
         component={OrderHistoryScreen}
         options={{
@@ -189,7 +189,7 @@ const OrderHistoryStackScreen = ({ navigation }) => {
           headerTitleStyle: {
             fontWeight: 'bold',
           },
-        }}
+        }} */}
       />
     </Stack.Navigator>
   );
