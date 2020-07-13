@@ -5,7 +5,6 @@ import Logo from "../res/assets/images/logo.png"
 import { AuthContext } from '../utils/authContext';
 import SHOPAPIKit, { setShopClientToken, setOrderClientToken } from '../utils/apikit';
 
-
 const SplashScreen = props => {
   const { signIn } = useContext(AuthContext);
   useEffect(() => {
