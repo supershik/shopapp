@@ -83,7 +83,7 @@ const SubscriptionScreen = ({ navigation }) => {
           }
 
           setLoading(true);
-          SHOPAPIKit.get('/shop/allsubscription')
+          SHOPAPIKit.get('/shop/details/subscription')
             .then(onSuccess)
             .catch(onFailure);
         }
@@ -126,7 +126,7 @@ const SubscriptionScreen = ({ navigation }) => {
           console.log(error);
     }
     setLoading(true);
-    SHOPAPIKit.patch('/shop/update/subscription', payload)
+    SHOPAPIKit.patch('/shop/details/subscription/update', payload)
       .then(onSuccess)
       .catch(onFailure);
   }
@@ -198,6 +198,14 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#00ff00',
   },
+  buttonContainer: {
+    height: 35,
+    justifyContent: 'center',
+    marginLeft: 25,
+    marginRight: 25,
+    marginTop: 10,
+    marginBottom: 10,
+  }
 });
 
 export default SubscriptionScreen;

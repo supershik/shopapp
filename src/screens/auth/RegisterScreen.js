@@ -75,63 +75,63 @@ const RegisterScreen = ({ navigation }) => {
 
     const handleSignUp = async () => {
 
-        // if(errorData.isValidShopName == false)
-        // {
-        //     Toast.show('Enter the shop name')
-        //     return;
-        // }
-        // if(errorData.isValidShopOwner == false)
-        // {
-        //     Toast.show('Enter the shop owner')
-        //     return;
-        // }
-        // if(errorData.isValidAddress == false)
-        // {
-        //     Toast.show('Enter the address')
-        //     return;
-        // }
-        // if(errorData.isValidCategory == false)
-        // {
-        //     Toast.show('Enter the category')
-        //     return;
-        // }
+        if(errorData.isValidShopName == false)
+        {
+            Toast.show('Enter the shop name')
+            return;
+        }
+        if(errorData.isValidShopOwner == false)
+        {
+            Toast.show('Enter the shop owner')
+            return;
+        }
+        if(errorData.isValidAddress == false)
+        {
+            Toast.show('Enter the address')
+            return;
+        }
+        if(errorData.isValidCategory == false)
+        {
+            Toast.show('Enter the category')
+            return;
+        }
 
-        // if(errorData.isValidGST == false)
-        // {
-        //     Toast.show('Enter the valid GST')
-        //     return;
-        // }
-        // if(errorData.isValidEmail == false)
-        // {
-        //     Toast.show('Enter the valid email')
-        //     return;
-        // }
-        // if(errorData.isValidMobile == false)
-        // {
-        //     Toast.show('Enter the valid mobile')
-        //     return;
-        // }
-        // if(errorData.isValidPassword == false)
-        // {
-        //     Toast.show('Enther the password')
-        //     return;
-        // }
+        if(errorData.isValidGST == false)
+        {
+            Toast.show('Enter the valid GST')
+            return;
+        }
+        if(errorData.isValidEmail == false)
+        {
+            Toast.show('Enter the valid email')
+            return;
+        }
+        if(errorData.isValidMobile == false)
+        {
+            Toast.show('Enter the valid mobile')
+            return;
+        }
+        if(errorData.isValidPassword == false)
+        {
+            Toast.show('Enther the password')
+            return;
+        }
 
-        // if(checkCity() == false)
-        // {
-        //     Toast.show('Enter the city')
-        //     return;
-        // }
-        // if(checkState() == false)
-        // {
-        //     Toast.show('Enter the State')
-        //     return;
-        // }
-        // if(checkPincode() == false)
-        // {
-        //     Toast.show('Enter the pincode')
-        //     return;
-        // }
+        if(checkCity() == false)
+        {
+            Toast.show('Enter the city')
+            return;
+        }
+        if(checkState() == false)
+        {
+            Toast.show('Enter the State')
+            return;
+        }
+        if(checkPincode() == false)
+        {
+            Toast.show('Enter the pincode')
+            return;
+        }
 
         setErrorMsg('');
         setVerifyCode('');
@@ -209,7 +209,7 @@ const RegisterScreen = ({ navigation }) => {
                 }
               },
               error => console.log("The location could not be loaded because ", error.message),
-              { enableHighAccuracy: true, timeout: 20000, maximumAge: 1000 }
+              { enableHighAccuracy: false, timeout: 20000, maximumAge: 1000 }
             );
 
             const onSuccess = ({ data }) => {

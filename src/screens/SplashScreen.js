@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { View, Image, StyleSheet } from 'react-native';
 import AsyncStorage from '@react-native-community/async-storage'
-import Logo from "../res/assets/images/logo.png"
+import Splash from "../res/assets/images/splash.png"
 import { AuthContext } from '../utils/authContext';
-import SHOPAPIKit, { setShopClientToken, setOrderClientToken } from '../utils/apikit';
+import SHOPAPIKit, { setShopClientToken, setOrderClientToken, setCashFreeToken } from '../utils/apikit';
 
 const SplashScreen = props => {
   const { signIn } = useContext(AuthContext);
@@ -28,8 +28,11 @@ const SplashScreen = props => {
         const onSuccess = ({ data }) => {          
           setShopClientToken(data.token);
           setOrderClientToken(data.token);
+          setCashFreeToken(data.token);
           console.log("Splash Screen Success");
-          signIn({ mobile, password, token: data.token });
+          console.log(data);
+          
+          signIn({ mobile, password, token: data.token, shopname: data.shopname, managedshop: data.managedshop });
         }
         const onFailure = error => {
           signIn({ mobile, password });
@@ -52,7 +55,7 @@ const SplashScreen = props => {
         { justifyContent: 'center', alignItems: 'center' }
       ]}
     >
-      <Image style={{ width: 250, height: 250, resizeMode: 'contain' }} source={Logo} />
+      <Image style={{ width: '50%', height: '50%', resizeMode: 'contain' }} source={Splash} />
     </View>
   )
 }

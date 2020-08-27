@@ -22,12 +22,22 @@ import Toast from 'react-native-simple-toast';
 import Spinner from 'react-native-loading-spinner-overlay';
 import AsyncStorage from '@react-native-community/async-storage'
 import {ORDERAPIKit, setOrderClientToken} from '../../utils/apikit';
-import { colors } from '../../res/style/colors'
+import SwitchSelector from 'react-native-switch-selector';
 
 const OrderHistoryScreen = ({ navigation }) => {
   const { signIn } = useContext(AuthContext);
   const [loading, setLoading] = useState(false);
-  const [orders, setOrders] = useState([]);
+  const [ordersAll, setOrders] = useState([]);
+  const [ordersCompleted, setOrdersCompleted] = useState([]);
+  const [ordersCancelled, setOrdersCancelled] = useState([]);
+  const [ordersRefunded, setOrdersRefunded] = useState([]);
+  const [switchIndex, setSwitchIndex] = useState(0);
+
+  const options = [
+    { label: 'Completed', value: "0" },
+    { label: 'Cancelled', value: "1" },
+    { label: 'Refunded', value: "2" }
+  ];
 
   const reSignIn = async()=> {
     let mobile = null;
@@ -42,7 +52,31 @@ const OrderHistoryScreen = ({ navigation }) => {
 
     signIn({ mobile, password });
   }
+  const setPartialOrders = (orders) => {
+    let completedOrders = [];
+    let cancelledOrders = [];
+    let refundedOrders = [];
+    orders.forEach(element => {
+      if( element.orderstatus == "Completed" )
+        completedOrders.push(element);
+      else if( element.orderstatus == "Cancelled" )
+        cancelledOrders.push(element);
+      else if( element.orderstatus == "Refunded" )
+        refundedOrders.push(element);
+    });
 
+    setOrders(orders);
+    setOrdersCompleted(completedOrders);
+    setOrdersCancelled(cancelledOrders);
+    setOrdersRefunded(refundedOrders);
+
+    onSwitchChange(0);  // All data
+  }
+  const onSwitchChange = (value) => {
+    if(switchIndex == value)
+      return;
+    setSwitchIndex(value);
+  }
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       const bootstrapAsync = async () => {
@@ -55,7 +89,8 @@ const OrderHistoryScreen = ({ navigation }) => {
         if (userToken != null) {
           const onSuccess = ({ data }) => {
             setLoading(false);
-            setOrders(data.orders);
+            setPartialOrders(data.orders);
+            //console.log(data.orders);
             console.log('success')
           }
           const onFailure = (error) => {
@@ -86,20 +121,36 @@ const OrderHistoryScreen = ({ navigation }) => {
   }, [navigation]);
 
   const onOrderPressed = (item) => {
-    console.log(item.orderref);
+    //console.log(item.orderref);
     navigation.navigate('Order Detail', item)
   }
   const renderItem = ({ item }) => {
     return (
+      // <View style={styles.item}>
+      //   <TouchableOpacity onPress={() => onOrderPressed(item)}>
+      //     <View style={styles.itemGroup}>
+      //       <Text style={{ fontSize: 15 }}>Order Ref         {item.orderref}</Text>
+      //       <Text style={{ fontSize: 15 }}>Quantity           {item.orderquantity}</Text>
+      //       <Text style={{ fontSize: 15 }}>Sub Total         ₹{item.ordertotal}</Text>
+      //       <Text style={{ fontSize: 15 }}>Order Date      {item.orderdate}</Text>
+      //     </View>
+      //   </TouchableOpacity>
+      // </View>
       <View style={styles.item}>
-        <TouchableOpacity onPress={() => onOrderPressed(item)}>
-          <View style={styles.itemGroup}>
-            <Text style={{ fontSize: 15 }}>Order Ref         {item.orderref}</Text>
-            <Text style={{ fontSize: 15 }}>Quantity           {item.orderquantity}</Text>
-            <Text style={{ fontSize: 15 }}>Sub Total         ₹{item.ordertotal}</Text>
-            <Text style={{ fontSize: 15 }}>Order Date      {item.orderdate}</Text>
+          <View style={{flex: 1 }}>
+            <TouchableOpacity onPress={() => onOrderPressed(item)}>
+              <View style={styles.itemGroup}>
+                <View style={{flexDirection: "row", justifyContent: 'space-around', paddingVertical: 3}}>
+                    <Text style={{ flex: 2, fontSize: 15, textDecorationLine: "underline",textAlign: "center" }}>{item.orderref}</Text>
+                    <Text style={{ flex: 2, fontSize: 15, textAlign: "center" }}>{item.orderdate}</Text>
+                  </View>
+                  <View style={{flexDirection: "row", justifyContent: "space-around", paddingVertical: 3}}>
+                    <Text style={{flex: 2,  fontSize: 15, textAlign: "center" }}>₹ {item.ordertotal}</Text>
+                    <Text style={{flex: 2,  fontSize: 15, textAlign: "center" }}>{item.orderquantity} pc</Text>
+                  </View>
+              </View>
+            </TouchableOpacity>
           </View>
-        </TouchableOpacity>
       </View>
     )
   }
@@ -108,10 +159,36 @@ const OrderHistoryScreen = ({ navigation }) => {
       <View style={styles.container}>
         <Spinner
           visible={loading} size="large" style={styles.spinnerStyle} />
-        <FlatList
-          data={orders}
-          keyExtractor={(item, index) => index.toString()}
-          renderItem={orders ? renderItem : null} />
+        <View style={{marginTop: 5}}/>
+        {
+          switchIndex == 1 ?
+            <FlatList
+            data={ordersCancelled}
+            keyExtractor={(item, index) => index.toString()}
+            renderItem={ordersCancelled ? renderItem : null} />
+          : switchIndex == 2 ?
+            <FlatList
+            data={ordersRefunded}
+            keyExtractor={(item, index) => index.toString()}
+            renderItem={ordersRefunded ? renderItem : null} />
+            : 
+            <FlatList
+            data={ordersCompleted}
+            keyExtractor={(item, index) => index.toString()}
+            renderItem={ordersCompleted ? renderItem : null} />
+        }
+        <SwitchSelector
+          textColor={'#2396f3'} //'#7a44cf'
+          selectedColor={"white"}
+          buttonColor={'#2396f3'}
+          borderColor={'#146fb9'}
+          backgroundColor={'#f2f2f2'}
+          style={{backgroundColor: '#f2f2f2', opacity: 1, borderWidth: 1, borderColor: "lightgray"}}
+          // hasPadding
+          options={options}
+          initial={0}
+          onPress={value => onSwitchChange(value)}
+        />
       </View>
     </>
   );
@@ -125,20 +202,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   item: {
-    flex: 1,
-    marginVertical: 10,
-    marginHorizontal: 20,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: 'rgba(133,181,106,1)',
+    flexDirection: "row",
+    marginVertical: 5,
+    marginHorizontal: 12,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(62,163,244,1)',
     flexDirection: 'row',
-    backgroundColor: 'rgba(212,232,213,1)',
+    backgroundColor: 'rgba(210,240,255,1)',
   },
   itemGroup: {
     flexDirection: 'column',
-    padding: 8,
+    paddingHorizontal: 5,
     justifyContent: 'space-between',
-  }
+  },
 });
 
 export default OrderHistoryScreen;

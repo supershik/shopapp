@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useContext } from 'react';
-import { View, Text, TextInput, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import AsyncStorage from '@react-native-community/async-storage'
 import Toast from 'react-native-simple-toast';
 import Autocomplete from 'react-native-autocomplete-input';
@@ -10,6 +10,7 @@ import {
     Button
 } from 'react-native-elements';
 import { AuthContext } from '../../utils/authContext';
+import { TextInput } from 'react-native-paper';
 
 const ShopProfileScreen = ({ navigation }) => {
     const { signIn } = useContext(AuthContext);
@@ -17,6 +18,7 @@ const ShopProfileScreen = ({ navigation }) => {
     const [shopname, setShopName] = useState('');
     const [shopowner, setShopOwnerName] = useState('');
     const [email, setEmail] = useState('');
+    const [emailOriginal, setEmailOriginal] = useState('');
     const [address, setAddress] = useState('');
     const [landmark, setLandmark] = useState('');
     const [city, setCity] = useState('');
@@ -24,6 +26,8 @@ const ShopProfileScreen = ({ navigation }) => {
     const [cityData, setCityData] = useState([]);
     const [state, setState] = useState('');
     const [pincode, setPinCode] = useState('');
+    const [gst, setGST] = useState('');
+    const [isUpdate, setIsUpdate] = useState(false);
 
     const [errorData, setErrorData] = useState(
         {
@@ -106,7 +110,7 @@ const ShopProfileScreen = ({ navigation }) => {
         }
         
         if (userToken != null) {
-            const payload = { shopname, shopowner, email, address, landmark, city, state, pincode };
+            const payload = { gst, shopname, shopowner, email, address, landmark, city, state, pincode };
             const onSuccess = ({ data }) => {
                 setLoading(false);
                 Toast.show('Successfully updated.');
@@ -126,7 +130,7 @@ const ShopProfileScreen = ({ navigation }) => {
             }
             setLoading(true);
             setShopClientToken(userToken)
-            SHOPAPIKit.patch('/shop/update', payload)
+            SHOPAPIKit.patch('/shop/details/update', payload)
                 .then(onSuccess)
                 .catch(onFailure)
         }
@@ -134,55 +138,80 @@ const ShopProfileScreen = ({ navigation }) => {
     };
 
     useEffect(() => {
-        const bootstrapAsync = async () => {
-            let userToken = null;
-            try {
-                userToken = await AsyncStorage.getItem('userToken')
-            } catch (e) {
-                console.log(e);
-            }
-            if (userToken != null) {
-                const onSuccess = ({ data }) => {
-                    setLoading(false);
-                    console.log(data)
-                    setShopName(data.shopname);
-                    setShopOwnerName(data.shopowner);
-                    setAddress(data.address);
-                    setState(data.state);
-                    setCity(data.city);
-                    setPinCode(data.pincode.toString());
-                    if(data.email != null)
-                        setEmail(data.email);
-                    if(data.landmark != null)
-                        setLandmark(data.landmark);
+        const unsubscribe = navigation.addListener('focus', () => {
+            const bootstrapAsync = async () => {
+                initStatus();
+                let userToken = null;
+                try {
+                    userToken = await AsyncStorage.getItem('userToken')
+                } catch (e) {
+                    console.log(e);
                 }
-                const onFailure = error => {
-                    setLoading(false);
-                    if(error.toString().includes('409')) {
-                        console.log(error);
+                if (userToken != null) {
+                    const onSuccess = ({ data }) => {
+                        setLoading(false);
+                        console.log(data);
+                        setIsUpdate(data.updateallow == 0 ? false: true);
+                        setGST(data.gst);
+                        setShopName(data.shopname);
+                        setShopOwnerName(data.shopowner);
+                        setAddress(data.address);
+                        setState(data.state);
+                        setCity(data.city);
+                        setPinCode(data.pincode.toString());
+                        if(data.email != null) {
+                            setEmail(data.email);
+                            setEmailOriginal(data.email);
+                        }
+                        if(data.landmark != null)
+                            setLandmark(data.landmark);
                     }
-                    else if(error.toString().includes('401')) {
-                      console.log( "error: Authentication failed");
-                      reSignIn();
-                      //Toast.show("error: Authentication failed");
+                    const onFailure = error => {
+                        setLoading(false);
+                        if(error.toString().includes('409')) {
+                            console.log(error);
+                        }
+                        else if(error.toString().includes('401')) {
+                        console.log( "error: Authentication failed");
+                        reSignIn();
+                        //Toast.show("error: Authentication failed");
+                        }
+                        else
+                            console.log(error);
                     }
-                    else
-                        console.log(error);
+                    setLoading(true);
+                    setShopClientToken(userToken)
+                    SHOPAPIKit.get('/shop/details/')
+                        .then(onSuccess)
+                        .catch(onFailure);
                 }
-                setLoading(true);
-                setShopClientToken(userToken)
-                SHOPAPIKit.get('/shop/get/')
-                    .then(onSuccess)
-                    .catch(onFailure);
-            }
-            else {
+                else {
 
-            }
-        };
-        bootstrapAsync();
+                }
+            };
+            bootstrapAsync();
+        });
 
+        return unsubscribe;
     }, []);
 
+    const initStatus = () => {
+        let initData = {
+                isValidShopName: true,
+                isValidShopOwnerName: true,
+                isValidEmail: true,
+                isValidAddress: true,
+                email: '',
+                address: '',
+                shopname: '',
+                shopowner: '',
+                city: '',
+                state: '',
+                pincode: '',
+                landmark: '',
+        }
+        setErrorData(initData);
+    }
    const validateEmail = email => {
        var re = /^(([^<>()\[\]\\.,;:\s@”]+(\.[^<>()\[\]\\.,;:\s@”]+)*)|(“.+”))@((\[[0–9]{1,3}\.[0–9]{1,3}\.[0–9]{1,3}\.[0–9]{1,3}])|(([a-zA-Z\-0–9]+\.)+[a-zA-Z]{2,}))$/;
        return re.test(email);
@@ -247,8 +276,15 @@ const ShopProfileScreen = ({ navigation }) => {
        }
    }
    const onEmailChanged = () => {
-        if (validateEmail(email)) {
+        if( email == emailOriginal || email.length < 1 ) {
+            setErrorData({
+                ...errorData,
+                isValidEmail: true,
+            });
+            return true;
+        }
 
+        if (validateEmail(email)) {
             setErrorData({
                 ...errorData,
                 isValidEmail: true
@@ -352,6 +388,45 @@ const ShopProfileScreen = ({ navigation }) => {
        setCityData([]);
    }
 
+   const onGSTChanged = () => {
+        if (gst.length == 15) {
+            setErrorData({
+                ...errorData,
+                isValidGST: true
+            });
+            const onSuccessGST = ({ data }) => {
+                setErrorData({
+                    ...errorData,
+                    isValidGST: false,
+                    gst: data.message,
+                });
+                
+                setLoading(false);
+                return true;
+            }
+            const onFailureGST = error => {
+                console.log(error)
+                setErrorData({
+                    ...errorData,
+                    isValidGST: true,
+                });
+                setLoading(false);
+                return false;
+            }
+            setLoading(true);
+            SHOPAPIKit.get('/validation/gst/' + gst)
+                .then(onSuccessGST)   // 200: gst already exist.
+                .catch(onFailureGST); // 409: OK, gst is not exist.
+        }
+        else {
+            setErrorData({
+                ...errorData,
+                isValidGST: false,
+                gst: 'Enter the GST that character length is 15.',
+            });
+            return false;
+        }
+    }
    return (
         <View style={styles.container}>
             <Spinner
@@ -359,132 +434,135 @@ const ShopProfileScreen = ({ navigation }) => {
             <ScrollView
                 style={styles.scrollView}>
                     <View style={styles.viewInputGroup}>
-                        <View>
-                            <Text style={styles.textView}>
-                                Shop Name
-                            </Text>
-                            <TextInput
-                                style={styles.textInput}
-                                label={'ShopName'}
-                                placeholder="Shop Name"
-                                value={shopname}
-                                onChangeText={setShopName}
-                                onBlur={() => onShopNameChanged()}
-                            />
-                            {
-                                errorData.isValidShopName ? null : <Text style={{ color: 'red' }}>{errorData.shopname}</Text>
-                            }
-                        </View>
-                        <View>
-                            <Text style={styles.textView}>
-                                Shop Owner Name
-                            </Text>
-                            <TextInput
-                                style={styles.textInput}
-                                label={'ShopOwnerName'}
-                                placeholder="Shop Owner Name"
-                                value={shopowner}
-                                onChangeText={setShopOwnerName}
-                                onBlur={() => onShopOwnerNameChanged()}
-                            />
-                            {
-                                errorData.isValidShopOwnerName ? null : <Text style={{ color: 'red' }}>{errorData.shopowner}</Text>
-                            }
-                        </View>
-                        <View>
-                            <Text style={styles.textView}>
-                                Email
-                            </Text>
-                            <TextInput
-                                style={styles.textInput}
-                                label={'Email'}
-                                placeholder="Email Address"
-                                value={email}
-                                onChangeText={setEmail}
-                                onBlur={() => onEmailChanged()}
-                            />
-                            {
-                                errorData.isValidEmail ? null : <Text style={{ color: 'red' }}>{errorData.email}</Text>
-                            }
-                        </View>
-                        <View>
-                            <Text style={styles.textView}>
-                                    Address
-                            </Text>
-                            <TextInput
-                                style={styles.textInput}
-                                label={'Address'}
-                                placeholder="Address"
-                                value={address}
-                                onChangeText={setAddress}
-                                onBlur={() => onAddressChanged()}
-                            />
-                            {
-                                errorData.isValidAddress ? null : <Text style={{ color: 'red' }}>{errorData.address}</Text>
-                            }
-                        </View>
-                        <View>
-                            <Text style={styles.textView}>
-                                    Landmark
-                            </Text>
-                            <TextInput
-                                style={styles.textInput}
-                                label={'Landmark'}
-                                placeholder="Landmark"
-                                value={landmark}
-                                onChangeText={setLandmark}
-                                onBlur={() => onLandMarkChanged()}
-                            />
-                        </View>
-                        <View>
-                            <Text style={styles.textView}>
-                                City
-                            </Text>
-                            <Autocomplete
-                                style={styles.textInput}
-                                label={'City'}
-                                placeholder="City"
-                                data={cityData}
-                                defaultValue={query}
-                                value={city}
-                                onChangeText={text=> onChangeCity(text)}
-                                renderItem={({ item, i }) => (
-                                    <TouchableOpacity onPress={() => onSelectedCity(item)}>
-                                    <Text>{item.city}</Text>
-                                    </TouchableOpacity>
-                                )}
-                            />
-                        </View>
-                        <View>
-                            <Text style={styles.textView}>
-                                State
-                            </Text>
+                        <TextInput
+                            style={styles.textInput}
+                            label={'GST'}
+                            placeholder="GST"
+                            editable = {isUpdate}
+                            value={gst.toUpperCase()}
+                            maxLength={15}
+                            onChangeText={setGST}
+                            onBlur={() => onGSTChanged()}
+                        />
+                        {/* {
+                            errorData.isValidGST ? null : <Text style={{ color: 'red' }}>{errorData.gst}</Text>
+                        } */}
+                        <TextInput
+                            style={styles.textInput}
+                            label={'ShopName'}
+                            placeholder="Shop Name"
+                            editable = {isUpdate}
+                            value={shopname}
+                            onChangeText={setShopName}
+                            onBlur={() => onShopNameChanged()}
+                        />
+                        {
+                            errorData.isValidShopName ? null : <Text style={{ color: 'red' }}>{errorData.shopname}</Text>
+                        }
+                        <TextInput
+                            style={styles.textInput}
+                            label={'ShopOwnerName'}
+                            placeholder="Shop Owner Name"
+                            editable = {isUpdate}
+                            value={shopowner}
+                            onChangeText={setShopOwnerName}
+                            onBlur={() => onShopOwnerNameChanged()}
+                        />
+                        {
+                            errorData.isValidShopOwnerName ? null : <Text style={{ color: 'red' }}>{errorData.shopowner}</Text>
+                        }
+                        <TextInput
+                            style={styles.textInput}
+                            label={'Email'}
+                            placeholder="Email Address"
+                            editable = {isUpdate}
+                            value={email}
+                            onChangeText={setEmail}
+                            onBlur={() => onEmailChanged()}
+                        />
+                        {
+                            errorData.isValidEmail ? null : <Text style={{ color: 'red' }}>{errorData.email}</Text>
+                        }
+                        <TextInput
+                            style={styles.textInput}
+                            label={'Address'}
+                            placeholder="Address"
+                            editable = {isUpdate}
+                            value={address}
+                            onChangeText={setAddress}
+                            onBlur={() => onAddressChanged()}
+                        />
+                        {
+                            errorData.isValidAddress ? null : <Text style={{ color: 'red' }}>{errorData.address}</Text>
+                        }
+                        <TextInput
+                            style={styles.textInput}
+                            label={'Landmark'}
+                            placeholder="Landmark"
+                            editable = {isUpdate}
+                            value={landmark}
+                            onChangeText={setLandmark}
+                            onBlur={() => onLandMarkChanged()}
+                        />
+                            { isUpdate == true ? (
+                                <>
+                                    <Text style={styles.textView}>
+                                        City
+                                    </Text>
+                                    <Autocomplete
+                                        inputContainerStyle={styles.textInput1}
+                                        label={'City'}
+                                        placeholder="City"
+                                        data={cityData}
+                                        defaultValue={query}
+                                        value={city}
+                                        onChangeText={text=> onChangeCity(text)}
+                                        renderItem={({ item, i }) => (
+                                            <TouchableOpacity onPress={() => onSelectedCity(item)}>
+                                                <Text>{item.city}</Text>
+                                            </TouchableOpacity>
+                                        )}
+                                    /> 
+                                </> ) : (
+                                <TextInput
+                                    style={styles.textInput}
+                                    label={'City'}
+                                    editable = {isUpdate}
+                                    value={city}
+                                />
+                            )}
                             <TextInput
                                 style={styles.textInput}
                                 label={'State'}
                                 placeholder="State"
+                                editable = {isUpdate}
                                 value={state}
                                 onChangeText={setState}
                             />
-                        </View>
-                        <View>
-                            <Text style={styles.textView}>
-                                Pincode
-                            </Text>
                             <TextInput
                                 style={styles.textInput}
                                 label={'Pincode'}
                                 placeholder="Pincode"
+                                editable = {isUpdate}
                                 value={pincode}
                                 onChangeText={setPinCode}
                             />
-                        </View>
-                        <Button
-                            buttonStyle={styles.updateButton}
-                            backgroundColor="#03A9F4"
-                            title="Update"
-                            onPress={() => handleUpdate()}
-                        />
+                        {isUpdate == true ? (
+                            <Button
+                                buttonStyle={styles.updateButton}
+                                backgroundColor="#03A9F4"
+                                title="Update"
+                                onPress={() => handleUpdate()}
+                        /> ) :  (
+                            <Button
+                                buttonStyle={styles.updateButton}
+                                disabled={true}
+                                backgroundColor="#03A9F4"
+                                title="Update"
+                                onPress={() => handleUpdate()}
+                        /> )
+                        }
+                    
                 </View>
             </ScrollView>
         </View>
@@ -500,7 +578,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     scrollView: {
-        marginTop: 50,
+        marginTop: 20,
     },
     
     loginButton: {
@@ -525,16 +603,26 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
     },
     textView: {
-        fontSize: 14,
+        fontSize: 12,
         marginTop: 10,
-        color: "rgba(64,64,64,1)",
+        marginBottom: 5,
+        marginLeft: 12,
+        color: "grey",
     },
     textInput: {
-        borderWidth: 1,
-        borderColor: 'gray',
-        paddingLeft: 8,
-        height: 40,
-        textAlignVertical: "center"
+        height: 54,
+        color: "black",
+        backgroundColor: "white",
+        textAlignVertical: "center",
+        textAlign: "center",
     },
+    textInput1: {
+        borderWidth: 0,
+        borderBottomColor: 'grey',
+        borderBottomWidth: 1,
+        backgroundColor: "white",
+    },
+
 })
+
 export default ShopProfileScreen;

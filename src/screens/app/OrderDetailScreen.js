@@ -23,12 +23,14 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import moment from 'moment';
 import Spinner from 'react-native-loading-spinner-overlay';
 import AsyncStorage from '@react-native-community/async-storage'
-import { ORDERAPIKit } from '../../utils/apikit';
+import { ORDERAPIKit, CASHFREEAPIKit } from '../../utils/apikit';
 import { colors } from '../../res/style/colors'
+import imgEmpty from '../../res/assets/images/empty.png';
+
 const OrderDetailScreen = ({ navigation, route }) => {
   const { signIn } = useContext(AuthContext);
   const [loading, setLoading] = useState(false);
-  const [orderRef, setOrderRef] = useState(route.params.orderref);
+  const [orderRef] = useState(route.params.orderref);
   const [data, setData] = useState([]);
   const [order, setOrder] = useState({
     orderref: '',
@@ -70,7 +72,8 @@ const OrderDetailScreen = ({ navigation, route }) => {
         if (userToken != null) {
           const onSuccess = ({ data }) => {
             setLoading(false);
-            setOrder(data)
+            setOrder(data);
+            console.log('-------------------', data);
             setData(data.orderdetails)
           }
           const onFailure = error => {
@@ -134,7 +137,7 @@ const OrderDetailScreen = ({ navigation, route }) => {
       <View style={styles.item}>
         <Image
           style={styles.image}
-          source={item.imageurl ? { uri: item.imageurl } : null}
+          source={item.imageurl ? { uri: item.imageurl } : imgEmpty}
         />
         <View style={{ flex: 1 }}>
           <Text style={{ marginTop: 1, fontSize: 16 }}>{item.product}</Text>
@@ -181,26 +184,34 @@ const OrderDetailScreen = ({ navigation, route }) => {
           data={data}
           keyExtractor={(item, index) => index.toString()}
           renderItem={data ? renderItem : null} />
-        <View style={{ flexDirection: 'column', padding: 8, justifyContent: 'space-between', marginHorizontal: 10 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between'}}>
-            <Text style={{ fontSize: 16 }}>Total Quantity: {order.orderquantity}</Text>
-            <Text style={{ fontSize: 16 }}>Sub Total: {order.ordersubtotal}</Text>                    
-          </View>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between'}}>
-            <Text style={{ fontSize: 16 }}>Ready Date: {moment(order.orderpickuptime).format("YYYY-MM-DD")}</Text>
-            <Text style={{ fontSize: 16 }}>Discount: {order.orderdiscount}</Text>                    
-          </View>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between'}}>
-            <Text style={{ fontSize: 16 }}>Ready Time: {moment(order.orderpickuptime).format("HH:mm:ss")}</Text>
-            <Text style={{ fontSize: 16, marginLeft: 30}}>Total: {order.ordertotal}</Text>
-          </View>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between'}}>
-            <Text style={{ fontSize: 16, alignSelf: "center", paddingHorizontal: 0}}>Status: {order.status}</Text>
-            <Text style={{ fontSize: 16, alignSelf: "center", paddingHorizontal: 0 }}>Points: {order.orderpoints}</Text>
+          <View style={{ flexDirection: 'column', padding: 8, justifyContent: 'space-between', marginHorizontal: 10, backgroundColor: 'rgba(230,230,230,1)' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between'}}>
+              <Text style={{ fontSize: 16 }}>Total Quantity: {order.orderquantity}</Text>
+              <Text style={{ fontSize: 16 }}>Sub Total: {order.ordersubtotal}</Text>                    
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between'}}>
+              <Text style={{ fontSize: 16 }}>Ready Date: {moment.utc(order.orderpickuptime).format("YYYY-MM-DD")}</Text>
+              <Text style={{ fontSize: 16 }}>Discount: {order.orderdiscount}</Text>                    
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between'}}>
+              <Text style={{ fontSize: 16 }}>Ready Time: {moment.utc(order.orderpickuptime).format("HH:mm:ss")}</Text>
+              <Text style={{ fontSize: 16, marginLeft: 30}}>Total: {order.ordertotal}</Text>
+            </View>
+            {/* <View style={{ flexDirection: 'row', justifyContent: 'space-between'}}>
+              <Text style={{ fontSize: 16, alignSelf: "center", paddingHorizontal: 0}}>Status: {order.status}</Text>
+              <Text style={{ fontSize: 16, alignSelf: "center", paddingHorizontal: 0 }}>Points: {order.orderpoints}</Text>
+            </View> */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between'}}>
+                <Text style={{ fontSize: 16, alignSelf: "center" }}>Order Status: {order.status}</Text>
+                {
+                  order.statusid == 20 ?
+                    <Text style={{ fontSize: 16, alignSelf: "center" }}>Refund: {order.refundamount}</Text>
+                    :
+                  <Text style={{ fontSize: 16, alignSelf: "center" }}>Points: {order.orderpoints}</Text>
+                }
+              </View>
           </View>
         </View>
-
-      </View>
     </>
   );
 };
@@ -224,7 +235,9 @@ const styles = StyleSheet.create({
   },
   image: {
     width: 90,
-    marginVertical: 8,
+    height: '100%',
+    marginVertical: 0,
+    marginRight: 5,
     resizeMode: 'stretch'
   },
   circleview_green: {

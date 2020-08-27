@@ -2,7 +2,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-community/async-storage'
 // Create axios client, pre-configured with baseURL
 let SHOPAPIKit = axios.create({
-  baseURL: 'https://shopmoduleapi1.herokuapp.com',
+  baseURL: 'https://vayshopapiv1.herokuapp.com/',
   timeout: 10000,
 });
 // Set JSON Web Token in Client to be included in all calls
@@ -22,7 +22,7 @@ export const setShopClientToken = () => {
 };
 
 export const ORDERAPIKit = axios.create({
-  baseURL: 'https://ordermoduleapi1.herokuapp.com',
+  baseURL: 'https://apiv1.vsginfosystem.com:80',
   timeout: 10000,
 });
 
@@ -42,7 +42,7 @@ export const setOrderClientToken = () => {
 };
 
 export const CASHFREEAPIKit = axios.create({
-  baseURL: 'https://paymentmoduleapi1.herokuapp.com',
+  baseURL: 'https://apiv1.vsginfosystem.com:81',
   timeout: 10000,
 });
 

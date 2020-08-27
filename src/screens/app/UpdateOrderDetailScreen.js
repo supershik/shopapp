@@ -17,6 +17,7 @@ import {
   Text,
   Button,
   Platform,
+  Dimensions,
 } from 'react-native';
 
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -24,10 +25,13 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import moment from 'moment';
 import Spinner from 'react-native-loading-spinner-overlay';
 import AsyncStorage from '@react-native-community/async-storage'
-import { ORDERAPIKit } from '../../utils/apikit';
+import { ORDERAPIKit, CASHFREEAPIKit } from '../../utils/apikit';
 import { colors } from '../../res/style/colors'
 import DropDownPicker from 'react-native-dropdown-picker';
 import { AuthContext } from '../../utils/authContext';
+import { ConfirmDialog } from 'react-native-simple-dialogs';
+import imgEmpty from '../../res/assets/images/empty.png';
+import icon_cancel from '../../res/assets/images/ic_cancel.png'
 
 
 const UpdateOrderDetailScreen = ({ navigation, route }) => {
@@ -38,11 +42,12 @@ const UpdateOrderDetailScreen = ({ navigation, route }) => {
   const [showDate, setShowDate] = useState(false);
   const [time, setTime] = useState(new Date(moment.utc(route.params.orderpickup).format("YYYY-MM-DD")));  // not utc
   const [showTime, setShowTime] = useState(false);
-
-  const [originpickupdate] = useState(moment.utc(route.params.orderpickup).format("YYYY-MM-DD"));
-  const [originpickuptime] = useState(moment.utc(route.params.orderpickup).format("HH:mm:ss")); // not utc
+  
+  const [originpickupdate, setOriginPickupDate ] = useState(moment.utc(route.params.orderpickup).format("YYYY-MM-DD"));
+  const [originpickuptime, setOriginPickupTime] = useState(moment.utc(route.params.orderpickup).format("HH:mm:ss")); // not utc
   const [orderpickupdate, setOrderPickupDate] = useState(moment.utc(route.params.orderpickup).format("YYYY-MM-DD"));  // u
   const [orderpickuptime, setOrderPickupTime] = useState(moment.utc(route.params.orderpickup).format("HH:mm:ss")); // not utc
+  const [isEditPickDateTime, setEditPickDateTime] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [orderRef] = useState(route.params.orderref);
@@ -53,7 +58,10 @@ const UpdateOrderDetailScreen = ({ navigation, route }) => {
   const [isEditable, setEditable] = useState(true);
   const [isDisableUpdateBtn, setDisableUpdateBtn] = useState(true);
   const [isStatus, setEditableStatue] = useState(true);
+  const [managedshop, setManagedShop] = useState(0);
   
+  const [isAlertCanceldDlg, setAlertCancelDialog] = useState(false);
+
   const [orderTotalOrigin, setOrderTotalOrigin] = useState([]);
   const [orderdetails, setOrderDetails] = useState([]);
   const [orderRoot, setOrderRoot] = useState({
@@ -66,6 +74,7 @@ const UpdateOrderDetailScreen = ({ navigation, route }) => {
     statusid: 0,
     orderpickuptime: '',
     discountpercentage: 0,
+    minordervalue: 0,
     orderdetails: [],
   })
 
@@ -90,6 +99,8 @@ const UpdateOrderDetailScreen = ({ navigation, route }) => {
         let userToken = null;
         try {
           userToken = await AsyncStorage.getItem('userToken')
+          let managedshop = await AsyncStorage.getItem('managedshop');
+          setManagedShop(managedshop);
         } catch (e) {
           console.log(e);
         }
@@ -97,11 +108,16 @@ const UpdateOrderDetailScreen = ({ navigation, route }) => {
         if (userToken != null) {
           const onSuccess = ({ data }) => {
             setLoading(false);
-            // console.log(data);
+            console.log(data);
             setOrderInit(data);
             setOrderTotalOrigin(data);
             setOrderDetails(data.orderdetails);
+            console.log(data.orderdetails);
             LoadOrderStatus(data.orderref, data);
+            if (data.statusid > 14) {
+              Toast.show("Cancellation is not allowed");
+            }
+            //getCancellationStatus();
           }
           const onFailure = error => {
             setLoading(false);
@@ -158,8 +174,31 @@ const UpdateOrderDetailScreen = ({ navigation, route }) => {
     return unsubscribe;
   }, [navigation]);
   
+  const getCancellationStatus = () => {
+      console.log('-------------cancellation id -----------');
+      let orderres = orderRef.split("-");
+      const orderId = orderres[orderres.length-1];  // extract 1033 from VE2006-1033
+      console.log(orderId);
+
+      const onSuccess = ({ data }) => {
+        setLoading(false);
+        console.log('----------- cancellation data -----------');
+        console.log(data);
+      }
+
+      const onFailure = (error) => {
+        console.log('----------- cancellation error(but ok) -----------');
+        console.log(error)
+      }
+      setLoading(true);
+      CASHFREEAPIKit.post('/transaction/shop/cancel/order/refund/'+ orderId)
+        .then(onSuccess)
+        .catch(onFailure);
+  }
+
   const setOrderInit = (data) => {
 
+    console.log(data);
     let quantity = 0;
     let ordersubtotal = 0;
     let orderdiscount = 0;
@@ -173,8 +212,14 @@ const UpdateOrderDetailScreen = ({ navigation, route }) => {
       }
     })
 
-    orderdiscount = Number(orderdiscount.toFixed(2));  // float round
-    ordertotal = ordersubtotal-orderdiscount;
+    if( ordersubtotal < data.minordervalue ) // check if calculate discount 
+      orderdiscount = 0;
+    
+    // orderdiscount = Number(orderdiscount.toFixed(2));  // float round
+    // ordertotal = Number((ordersubtotal-orderdiscount).toFixed(2));
+    orderdiscount = Math.floor(orderdiscount*100)/100;
+    ordertotal = Number((ordersubtotal-orderdiscount))*100;
+    ordertotal = Math.floor(ordertotal)/100;
 
     let tempOrderData = {
       orderref: data.orderref,
@@ -190,6 +235,39 @@ const UpdateOrderDetailScreen = ({ navigation, route }) => {
     };
 
     setOrderRoot(tempOrderData);
+    initDateTime(data.orderpickuptime, data.statusid);
+  }
+
+  const initDateTime = (datetime, statusid) => {
+    setDate(new Date(moment.utc(datetime).format("YYYY-MM-DD")));
+    // setOriginDate(new Date(moment.utc(datetime).format("YYYY-MM-DD")));
+    setTime(new Date(moment.utc(datetime).format("YYYY-MM-DD")));
+
+    setOrderPickupDate(moment.utc(datetime).format("YYYY-MM-DD"));
+    setOrderPickupTime(moment.utc(datetime).format("HH:mm:ss"));
+    setOriginPickupDate(moment.utc(datetime).format("YYYY-MM-DD"));
+    setOriginPickupTime(moment.utc(datetime).format("HH:mm:ss"));
+
+
+    let currentDate = new Date();
+    let date = moment.utc(datetime).format("YYYY-MM-DD");
+    let time = moment.utc(datetime).format("HH:mm:ss");
+    var p1 = date.split("-");
+    var p2 = time.split(":");
+    var datetime1 = new Date(p1[0],p1[1]-1,p1[2],p2[0],p2[1],p2[2]);
+
+    console.log('-------------- Date time -------------------');
+    console.log(moment(currentDate).format("YYYY-MM-DD HH:mm:ss"));
+    console.log(moment(datetime1).format("YYYY-MM-DD HH:mm:ss"));
+    
+    var msDiff = datetime1.getTime() - currentDate.getTime(); 
+
+    console.log(msDiff);
+    // if( statusid < 12 && msDiff < 0 )  // pickup date and time is gone
+    if( statusid < 12 )  // pickup date and time is gone
+      setEditPickDateTime(true);
+    else
+      setEditPickDateTime(false);
   }
 
   const resetOrderRoot = (detailData) => {
@@ -207,9 +285,14 @@ const UpdateOrderDetailScreen = ({ navigation, route }) => {
       }
     })
 
-    orderdiscount = Number(orderdiscount.toFixed(2));  // float round
-    ordertotal = ordersubtotal-orderdiscount;
-
+    if( ordersubtotal < data.minordervalue ) // check if calculate discount 
+      orderdiscount = 0;
+    // orderdiscount = Number(orderdiscount.toFixed(2));  // float round
+    // ordertotal = Number((ordersubtotal-orderdiscount).toFixed(2));
+    orderdiscount = Math.floor(orderdiscount*100)/100;
+    ordertotal = Number((ordersubtotal-orderdiscount))*100;
+    ordertotal = Math.floor(ordertotal)/100;
+    
     let tempOrderData = {
       orderref: orderRoot.orderref,
       orderquantity: quantity,
@@ -286,7 +369,32 @@ const UpdateOrderDetailScreen = ({ navigation, route }) => {
     setShowTime(true);
   };
 
-  const updateLiveOrders = () => {
+  const onPressCancel = () => {
+    // let cancelledid = -1;
+    // console.log(orderstatuses);
+    // orderstatuses.forEach(element => {
+    //   console.log(element.status);
+    //   if(element.label == "Cancelled") {
+    //     cancelledid = element.value;
+    //   }
+    // })
+
+    // if( cancelledid == -1 ) {
+    //   Toast.show("Cancelled is not supported from next order status");
+    //   return;
+    // }
+
+    // /setAlertCancelDialog(true);
+  }
+
+  const onPressedUpdate = (nextStatus) => {
+    if (nextStatus == 'Cancelled')
+      setAlertCancelDialog(true);
+    else
+      updateLiveOrders(nextStatus);
+  }
+
+  const updateLiveOrders = (nextStatus) => {
     // check if current state is changed
     let bUpdate = false;
     // if(orderTotalOrigin.orderquantity != orderRoot.orderquantity ||
@@ -295,7 +403,22 @@ const UpdateOrderDetailScreen = ({ navigation, route }) => {
     //   orderTotalOrigin.status != orderRoot.status*/ )
     //   bUpdate = true;
       
-    if( orderstatusid != originorderstatusid ) {  // status is not selected 
+    let statusid = -1;
+    console.log(orderstatuses);
+    orderstatuses.forEach(element => {
+      if(element.label == nextStatus) {
+        statusid = element.value;
+      }
+    })
+
+    if (statusid == -1)
+      return;
+
+    console.log(nextStatus);
+    console.log(statusid);
+    console.log(originorderstatusid);
+
+    if( statusid != originorderstatusid ) {  // status is not selected 
       // Toast.show('Please select an status.', Toast.SHORT);
       bUpdate = true;
     }
@@ -342,7 +465,7 @@ const UpdateOrderDetailScreen = ({ navigation, route }) => {
         "ordersubtotal": orderRoot.ordersubtotal,
         "orderquantity": orderRoot.orderquantity,
         "orderpickuptime": pickDateTime,
-        "orderstatusid": orderstatusid,
+        "orderstatusid": statusid,
         "orderdetails": updateOrderDetails,
     }
 
@@ -368,7 +491,6 @@ const UpdateOrderDetailScreen = ({ navigation, route }) => {
       .then(onSuccess)
       .catch(onFailure);
   }
-
   const renderCircleView = (item) => {
     if (item.symbol == 'G') {
       return (
@@ -510,13 +632,45 @@ const UpdateOrderDetailScreen = ({ navigation, route }) => {
     else
       setEditable(false);
   }
+
+  const onPressCancelYes = () => {
+    setAlertCancelDialog(false);
+
+    let orderres = orderRoot.orderref.split("-");
+    const orderId = orderres[orderres.length-1];  // extract 1033 from VE2006-1033
+    console.log(orderId);
+
+    const onSuccess = ({ data }) => {
+      setLoading(false);
+      console.log(data);
+      Toast.show("Refund request is initiated successfully.\nIt will take upto 48 hrs to reflect in account.");
+      navigation.navigate('Home');
+    }
+
+    const onFailure = (error) => {
+      console.log(error);
+      setLoading(false);
+      Toast.show("Please try after sometime");
+    }
+    
+    setLoading(true);
+    //https://paymentmoduleapi1.herokuapp.com/transaction/shop/cancel/order/refund/1179
+    CASHFREEAPIKit.post('/transaction/shop/cancel/order/refund/'+ orderId)
+      .then(onSuccess)
+      .catch(onFailure);
+  }
+  
+  const onPressCancelNo = () => {
+    setAlertCancelDialog(false);
+  }
+
   const renderItem = ({ item, index }) => {
     return (
       //<TouchableOpacity onPress={() => onOrderPressed(item, index)}>
         <View style={styles.item}>
           <Image
             style={styles.image}
-            source={item.imageurl ? { uri: item.imageurl } : null}
+            source={item.imageurl ? { uri: item.imageurl } : imgEmpty}
           />
           <View style={{ flex: 1 }}>
             <Text style={{ marginTop: 1, fontSize: 16 }}>{item.product}</Text>
@@ -568,11 +722,11 @@ const UpdateOrderDetailScreen = ({ navigation, route }) => {
                   }
                 </TouchableOpacity> */}
               </View>
-
+                  
               <View style={{ flexDirection: 'row', marginTop: 0}}>
                 <TouchableOpacity onPress={() => onMinusQuantityPressed(item, index)}
-                  disabled={isEditable || !item.available} >
-                  {isEditable || !item.available ? 
+                  disabled={isEditable || !item.available || managedshop} >
+                  {isEditable || !item.available || managedshop ? 
                     <MaterialCommunityIcons
                         style = {{paddingRight: 5}}
                         name="minus-box"
@@ -590,8 +744,8 @@ const UpdateOrderDetailScreen = ({ navigation, route }) => {
                 </TouchableOpacity>
                 <Text style={{ fontSize: 15, paddingHorizontal: 10 }}>{item.quantity}</Text>
                 <TouchableOpacity onPress={() => onPlusQuantityPressed(item, index)}
-                  disabled={isEditable || !item.available} >
-                  {isEditable || !item.available ? 
+                  disabled={isEditable || !item.available || managedshop} >
+                  {isEditable || !item.available || managedshop? 
                     <MaterialCommunityIcons
                         style = {{paddingRight: 5}}
                         name="plus-box"
@@ -610,8 +764,8 @@ const UpdateOrderDetailScreen = ({ navigation, route }) => {
 
               {isEditable ? 
                   <TouchableOpacity onPress={() => onAvailablePressed(item, index)}
-                    disabled={isEditable} >
-                    {item.available ? (
+                    disabled={isEditable || managedshop} >
+                    {item.available || managedshop ? (
                         <MaterialCommunityIcons
                         style = {{paddingRight: 8}}
                         name="check-circle-outline"
@@ -627,8 +781,8 @@ const UpdateOrderDetailScreen = ({ navigation, route }) => {
                     }
                   </TouchableOpacity>
                 : <TouchableOpacity onPress={() => onAvailablePressed(item, index)}
-                    disabled={isEditable} >
-                    {item.available ? (
+                    disabled={isEditable || managedshop} >
+                    {item.available || managedshop ? (
                           <MaterialCommunityIcons
                           style = {{paddingRight: 8}}
                           name="check-circle-outline"
@@ -655,7 +809,7 @@ const UpdateOrderDetailScreen = ({ navigation, route }) => {
   return (
     <>
       <View style={styles.container}>
-        <View style={{flex: 3}}>
+        <View style={{flex: 3.8}}>
           <Spinner
             visible={loading} size="large" style={styles.spinnerStyle} />
           <View style={{ flexDirection: 'column', padding: 8, justifyContent: 'space-between' }}>
@@ -667,7 +821,7 @@ const UpdateOrderDetailScreen = ({ navigation, route }) => {
             renderItem={orderdetails ? renderItem : null}
           />
         </View>
-        <View style={{flex: 1}}>
+        <View style={{flex: 1, backgroundColor: 'rgba(230,230,230,1)'}}>
           <ScrollView>
           <View style={{ flexDirection: 'column', padding: 8, justifyContent: 'space-between', marginHorizontal: 10 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginVertical: 1}}>
@@ -677,7 +831,13 @@ const UpdateOrderDetailScreen = ({ navigation, route }) => {
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginVertical: 1}}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between'}}>
                 <Text style={{ fontSize: 16 }}>Ready Date:</Text>
-                <Text  disabled={isEditable} style={{ fontSize: 16 }} onPress={showDatepicker}> {orderpickupdate}</Text>
+                {isEditPickDateTime ?
+                  <TouchableOpacity onPress={showDatepicker}>
+                    <Text  style={{ fontSize: 16, color: 'rgba(0, 128, 200, 1))', textDecorationLine: "underline" }}> {orderpickupdate}</Text>
+                  </TouchableOpacity>
+                  :
+                  <Text style={{ fontSize: 16 }}> {orderpickupdate}</Text>
+                }
                 <View>
                   {showDate && (
                     <DateTimePicker
@@ -686,7 +846,7 @@ const UpdateOrderDetailScreen = ({ navigation, route }) => {
                       mode='date'
                       is24Hour={true}
                       display="default"
-                      minimumDate={originDate}
+                      minimumDate={new Date()}
                       onChange={(event, date) => onDateChange(event, date)}
                     />
                   )}
@@ -697,7 +857,13 @@ const UpdateOrderDetailScreen = ({ navigation, route }) => {
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginVertical: 1}}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between'}}>
                 <Text style={{ fontSize: 16 }}>Ready Time:</Text>
-                <Text  disabled={isEditable} style={{ fontSize: 16 }} onPress={showTimepicker}> {orderpickuptime}</Text>
+                {isEditPickDateTime ?
+                  <TouchableOpacity onPress={showTimepicker}>
+                    <Text  style={{ fontSize: 16, color: 'rgba(0, 128, 200, 1))', textDecorationLine: "underline" }}> {orderpickuptime}</Text>
+                  </TouchableOpacity>
+                  :
+                  <Text style={{ fontSize: 16 }}> {orderpickuptime}</Text>
+                }
                 <View>
                   {showTime && (
                     <DateTimePicker
@@ -714,10 +880,10 @@ const UpdateOrderDetailScreen = ({ navigation, route }) => {
               <Text style={{ fontSize: 16, marginLeft: 30}}>Total: {orderRoot.ordertotal}</Text>
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5}}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between'}}>
-                <Text style={{ fontSize: 16, alignSelf: "center", marginTop: -100, marginLeft: 0}}>Status: </Text>
-                  <View style={{fontSize: 16, alignSelf: "center", marginLeft: 10}}>
-                  {orderstatuses.length < 1 ? (
+              <View style={{ flex: 1, flexDirection: 'row'}}>
+                <Text style={{ fontSize: 16, alignSelf: "center", marginTop: 0, marginLeft: 0}}>Status: </Text>
+                <View style={{fontSize: 16, alignSelf: "center", marginLeft: 10}}>
+                  {/* {orderstatuses.length < 1 ? (
                       <DropDownPicker
                       items={[
                         { label: "", value: '1'},
@@ -739,21 +905,126 @@ const UpdateOrderDetailScreen = ({ navigation, route }) => {
                             onChangeItem={item => setChangeOrderStatusid(item.value)}
                         />
                       )
-                  }
+                  } */}
+                  <Text style={{fontSize: 16}}>
+                    {orderRoot.status}
+                  </Text>
                   </View>
                 </View>
-              <View style={{ fontSize: 16, alignSelf: "center", marginTop: -100, paddingHorizontal: 20 }}>
-                <Button
-                    buttonStyle={styles.updateButton}
-                    backgroundColor="#03A9F4"
-                    title="Update order"
-                    disabled={isDisableUpdateBtn}
-                    onPress={() => updateLiveOrders()}
-                />
-              </View>
+                <View style={{ flex: 1, flexDirection: 'row-reverse'}}>
+                  {orderRoot.statusid == 10 && 
+                    <>
+                      <View style={{ fontSize: 16, alignSelf: "center", marginTop: 0, paddingLeft: 20 }}>
+                        <Button
+                            buttonStyle={styles.updateButton}
+                            color="#ababab"
+                            title="Cancel"
+                            onPress={() => onPressedUpdate('Cancelled')}
+                        />
+                      </View>
+                      <View style={{ fontSize: 16, alignSelf: "center", marginTop: 0, paddingHorizontal: 0 }}>
+                        <Button
+                            buttonStyle={styles.updateButton}
+                            color="#03A9F4"
+                            title="Confirmed"
+                            onPress={() => onPressedUpdate('Confirmed')}
+                        />
+                      </View>
+                    </>
+                  }
+                  {orderRoot.statusid == 11 && 
+                    <>
+                      <View style={{ fontSize: 16, alignSelf: "center", marginTop: 0, paddingLeft: 20 }}>
+                        <Button
+                            buttonStyle={styles.updateButton}
+                            color="#ababab"
+                            title="Cancel"
+                            onPress={() => onPressedUpdate('Cancelled')}
+                        />
+                      </View>
+                    </>
+                  }
+                  {orderRoot.statusid == 13 && 
+                    <>
+                      <View style={{ fontSize: 16, alignSelf: "center", marginTop: 0, paddingLeft: 20 }}>
+                        <Button
+                            buttonStyle={styles.updateButton}
+                            color="#ababab"
+                            title="Cancel"
+                            onPress={() => onPressedUpdate('Cancelled')}
+                        />
+                      </View>
+                      <View style={{ fontSize: 16, alignSelf: "center", marginTop: 0, paddingHorizontal: 0 }}>
+                        <Button
+                            buttonStyle={styles.updateButton}
+                            color="#03A9F4"
+                            title="Ready"
+                            onPress={() => onPressedUpdate('Ready')}
+                        />
+                      </View>
+                    </>
+                  }
+                  {orderRoot.statusid == 14 && 
+                    <>
+                      <View style={{ fontSize: 16, alignSelf: "center", marginTop: 0, paddingLeft: 20 }}>
+                        <Button
+                            buttonStyle={styles.updateButton}
+                            color="#ababab"
+                            title="Cancel"
+                            onPress={() => onPressedUpdate('Cancelled')}
+                        />
+                      </View>
+                      <View style={{ fontSize: 16, alignSelf: "center", marginTop: 0, paddingHorizontal: 0 }}>
+                        <Button
+                            buttonStyle={styles.updateButton}
+                            color="#03A9F4"
+                            title="Pickup"
+                            onPress={() => onPressedUpdate('Pickedup')}
+                        />
+                      </View>
+                    </>
+                  }
+                </View>
             </View>
           </View>
           </ScrollView>
+          <ConfirmDialog
+            dialogStyle={{ backgroundColor: "rgba(255,255,255,1)", borderRadius: 16, width: 260, alignSelf: "center" }}
+            titleStyle={{ textAlign: "center", marginTop: 30, fontSize: 16 }}
+            // title="Are you sure?"
+            visible={isAlertCanceldDlg}
+            onTouchOutside={() => setAlertCancelDialog(false)}
+          >
+            <View style = {{marginTop: 0, marginBottom: -40, marginHorizontal: 10 }}>
+              <View style={styles.imageConfirm}>
+                <Image
+                    source={icon_cancel}
+                    style={styles.iconCancelImage}
+                />
+              </View>
+
+              <Text style={{textAlign: "center", marginTop: 20, fontSize: 20, color: 'rgba(47,146,193,1.0)'}}>
+                Are you sure?
+              </Text>
+              <View style={{ flexDirection: 'row', marginTop: 30, marginHorizontal: 15, justifyContent: "space-between" }}>
+                  <View style={{width: 70}}>
+                    <Button
+                        title="Yes"
+                        titleStyle={{ fontSize: 14 }}
+                        onPress={() => onPressCancelYes()}
+                    />
+                  </View>
+                  <View style={{width: 70}}>
+                    <Button
+                          title="No"
+                          color = "rgba(164, 164, 164,1)"
+                          titleStyle={{ fontSize: 14 }}
+                          onPress={() => onPressCancelNo()}
+                      />
+                  </View>
+              </View>
+            </View>
+          </ConfirmDialog>
         </View>
       </View>
     </>
@@ -780,7 +1051,9 @@ const styles = StyleSheet.create({
   },
   image: {
     width: 90,
-    marginVertical: 8,
+    height: '100%',
+    marginVertical: 0,
+    marginRight: 5,
     resizeMode: 'stretch'
   },
   circleview_green: {
@@ -831,8 +1104,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'white',
   },
-  dropdown: {
-  }
+  imageConfirm: {
+    alignItems: "center",
+    backgroundColor: '#fff'
+  },
+
+  iconImage: {
+    width: Dimensions.get('window').width/5,
+    height: Dimensions.get('window').height/13,
+    resizeMode: 'stretch'
+  },
+  
+  iconCancelImage: {
+    width: Dimensions.get('window').width/7.16,
+    height: Dimensions.get('window').height/12,
+    resizeMode: 'stretch'
+  },
 
 });
 

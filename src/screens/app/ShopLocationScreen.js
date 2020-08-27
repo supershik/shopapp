@@ -81,6 +81,7 @@ const ShopLocationScreen = ({ navigation }) => {
       }
       if (userToken != null) {
           const onSuccess = ({ data }) => {
+            console.log(data);
               setLoading(false);
               let item = {latitude: data.latitude, longitude: data.longitude, latitudeDelta: 0.01, longitudeDelta: 0.01};
               setRegion(item);
@@ -106,7 +107,7 @@ const ShopLocationScreen = ({ navigation }) => {
 
           setLoading(true);
           setShopClientToken(userToken)
-          SHOPAPIKit.get('/shop/get/')
+          SHOPAPIKit.get('/shop/details/location')
               .then(onSuccess)
               .catch(onFailure);
       }
@@ -166,7 +167,7 @@ const ShopLocationScreen = ({ navigation }) => {
         }
         setLoading(true);
         setShopClientToken(userToken);
-        SHOPAPIKit.patch('/shop/update/location', payload)
+        SHOPAPIKit.patch('/shop/details/location/update', payload)
             .then(onSuccess)
             .catch(onFailure)
     }
@@ -293,6 +294,7 @@ const styles = StyleSheet.create({
   updateButtonLayout: {
     position: 'absolute',//use absolute position to show button on top of the map
     top: '85%', //for center align
+    opacity: 0.8,
     
     alignSelf: 'center' //for align to right
     

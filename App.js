@@ -6,7 +6,7 @@
 import React, { useEffect, useContext, useMemo, useReducer } from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { NavigationContainer } from '@react-navigation/native';
-import { setShopClientToken, setOrderClientToken } from './src/utils/apikit';
+import { setShopClientToken, setOrderClientToken, setCashFreeToken } from './src/utils/apikit';
 
 // Screens
 import LoginScreen from './src/screens/auth/LoginScreen';
@@ -51,11 +51,15 @@ const App = ({ navigation }) => {
           data &&
           data.mobile !== undefined &&
           data.password !== undefined &&
-          data.token != undefined
+          data.token != undefined && 
+          data.shopname != undefined &&
+          data.managedshop != undefined
         ) {
           await AsyncStorage.setItem('userToken', data.token);
           await AsyncStorage.setItem('mobile', data.mobile);
           await AsyncStorage.setItem('password', data.password);
+          await AsyncStorage.setItem('shopname', data.shopname);
+          await AsyncStorage.setItem('managedshop', data.managedshop.toString());
           dispatch({ type: 'SIGN_IN', token: data.token });
         } else {
           dispatch({ type: 'TO_SIGNIN_PAGE' });
@@ -78,6 +82,7 @@ const App = ({ navigation }) => {
           await AsyncStorage.setItem('password', data.password);
           setShopClientToken(); 
           setOrderClientToken();
+          setCashFreeToken();
           dispatch({ type: 'SIGNED_UP', token: data.token });
         } else {
           dispatch({ type: 'TO_SIGNUP_PAGE' });

@@ -28,6 +28,7 @@ import { colors } from '../../res/style/colors'
 import SHOPAPIKit, { ORDERAPIKit, setOrderClientToken } from '../../utils/apikit';
 import Logo from "../../res/assets/images/logo.png"
 import { AuthContext } from '../../utils/authContext';
+import imgEmpty from '../../res/assets/images/empty.png';
 
 const ProductsScreen = ({ navigation }) => {
   const { signIn } = useContext(AuthContext);
@@ -327,7 +328,7 @@ const ProductsScreen = ({ navigation }) => {
         <View style={styles.item}>
           <Image
             style={styles.image}
-            source={item.imageurl ? { uri: item.imageurl } : null}
+            source={item.imageurl ? { uri: item.imageurl } : imgEmpty}
           />
           <View style={{ flex: 1 }}>
             <Text style={{ marginTop: 1, fontSize: 16 }}>{item.product}</Text>
@@ -508,7 +509,9 @@ const styles = StyleSheet.create({
   },
   image: {
     width: 90,
-    marginVertical: 8,
+    height: '100%',
+    marginVertical: 0,
+    marginRight: 5,
     resizeMode: 'stretch'
   },
   circleview_green: {

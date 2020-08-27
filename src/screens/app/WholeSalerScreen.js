@@ -14,6 +14,7 @@ import {
   ScrollView,
   View,
   Text,
+  ToastAndroid,
 } from 'react-native';
 import Geolocation from '@react-native-community/geolocation';
 import AsyncStorage from '@react-native-community/async-storage'
@@ -25,6 +26,7 @@ import {
 } from 'react-native/Libraries/NewAppScreen';
 import MarkerImage from '../../res/assets/images/ic_red_marker.png';
 import { AuthContext } from '../../utils/authContext';
+import Toast from 'react-native-simple-toast';
 
 const WholeSalerScreen = ({ navigation }) => {
   const { signIn } = useContext(AuthContext);
@@ -83,12 +85,18 @@ const WholeSalerScreen = ({ navigation }) => {
 
           const onSuccess = ({ data }) => {
             console.log(data);
-            setData(data.shops)
-            updateShopList(data.shops);
             setLoading(false);
+            if (data.shops != null) {
+              setData(data.shops)
+              updateShopList(data.shops);
+            }
+              
+            if(data.shops.length < 1 || data.shops == null)
+              Toast.show("No wholesaler near by");
           }
           const onFailure = error => {
             setLoading(false);
+            Toast.show("No wholesaler near by");
             if(error.toString().includes('409')) {
               console.log(error);
             }
@@ -116,7 +124,7 @@ const WholeSalerScreen = ({ navigation }) => {
         (error) => {
              console.log(error); 
         },
-        { enableHighAccuracy: true, timeout: 20000, maximumAge: 1000 });
+        { enableHighAccuracy: false, timeout: 20000, maximumAge: 1000 });
     });
 
     return unsubscribe;

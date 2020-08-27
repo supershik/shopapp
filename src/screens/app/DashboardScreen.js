@@ -17,6 +17,7 @@ import HomeScreen from './HomeScreen';
 import ShopProfileScreen from './ShopProfileScreen';
 import ShopServicesScreen from './ShopServicesScreen';
 import SubscriptionScreen from './SubscriptionScreen';
+import BankDetailsScreen from './BankDetailsScreen';
 import ShopLocationScreen from './ShopLocationScreen';
 import WholeSalerScreen from './WholeSalerScreen';
 import ProductsScreen from './ProductsScreen';
@@ -37,6 +38,11 @@ import { localNotificationService } from '../fcm/LocalNotificationService';
 
 import { colors } from '../../res/style/colors'
 import SHOPAPIKit from '../../utils/apikit';
+import RegisterVisitorScreen from './RegisterVisitorScreen';
+import VisitorHistoryScreen from './VisitorHistoryScreen';
+import RewardScreen from './RewardScreen';
+import ShopBillingScreen from './ShopBillingScreen';
+import BarcodeApp from '../../component/BarcodeApp'
 const Drawer = createDrawerNavigator();
 const Stack = createStackNavigator();
 
@@ -50,6 +56,19 @@ const HomeStackScreen = ({ navigation }) => {
       <Stack.Screen
         name="Update Order Detail"
         component={UpdateOrderDetailScreen}
+        options={{
+          headerStyle: {
+            backgroundColor: colors.primary,
+          },
+          headerTintColor: '#fff',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+          },
+        }}
+      />
+      <Stack.Screen
+        name="Order Detail"
+        component={OrderDetailScreen}
         options={{
           headerStyle: {
             backgroundColor: colors.primary,
@@ -194,6 +213,46 @@ const OrderHistoryStackScreen = ({ navigation }) => {
     </Stack.Navigator>
   );
 };
+
+const ShopBillingStackScreen = ({ navigation }) => {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen
+        name="Shop Billing"
+        component={ShopBillingScreen}
+        options={{
+          headerStyle: {
+            backgroundColor: colors.primary,
+          },
+          headerTintColor: '#fff',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+          },
+          headerLeft: () => (
+            <MaterialCommunityIcons.Button name="menu" size={25}
+              backgroundColor={colors.primary}
+              onPress={() => navigation.openDrawer()}
+            ></MaterialCommunityIcons.Button>
+          )
+        }}
+      />
+      <Stack.Screen
+        name="Barcode"
+        component={BarcodeApp}
+        options={{
+          headerStyle: {
+            backgroundColor: colors.primary,
+          },
+          headerTintColor: '#fff',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+          },
+        }}
+      />
+    </Stack.Navigator>
+  );
+};
+
 const SubscriptionStackScreen = ({ navigation }) => {
   return (
     <Stack.Navigator>
@@ -219,6 +278,83 @@ const SubscriptionStackScreen = ({ navigation }) => {
     </Stack.Navigator>
   );
 };
+const BankDetailsStackScreen = ({ navigation }) => {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen
+        name="Bank Details"
+        component={BankDetailsScreen}
+        options={{
+          headerStyle: {
+            backgroundColor: colors.primary,
+          },
+          headerTintColor: '#fff',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+          },
+          headerLeft: () => (
+            <MaterialCommunityIcons.Button name="menu" size={25}
+              backgroundColor={colors.primary}
+              onPress={() => navigation.openDrawer()}
+            ></MaterialCommunityIcons.Button>
+          )
+        }}
+      />
+    </Stack.Navigator>
+  );
+};
+const RegisterVisitorStackScreen = ({ navigation }) => {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen
+        name="Register Visitor"
+        component={RegisterVisitorScreen}
+        options={{
+          headerStyle: {
+            backgroundColor: colors.primary,
+          },
+          headerTintColor: '#fff',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+          },
+          headerLeft: () => (
+            <MaterialCommunityIcons.Button name="menu" size={25}
+              backgroundColor={colors.primary}
+              onPress={() => navigation.openDrawer()}
+            ></MaterialCommunityIcons.Button>
+          )
+        }}
+      />
+    </Stack.Navigator>
+  );
+};
+
+const VisitorHistoryStackScreen = ({ navigation }) => {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen
+        name="Visitor History"
+        component={VisitorHistoryScreen}
+        options={{
+          headerStyle: {
+            backgroundColor: colors.primary,
+          },
+          headerTintColor: '#fff',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+          },
+          headerLeft: () => (
+            <MaterialCommunityIcons.Button name="menu" size={25}
+              backgroundColor={colors.primary}
+              onPress={() => navigation.openDrawer()}
+            ></MaterialCommunityIcons.Button>
+          )
+        }}
+      />
+    </Stack.Navigator>
+  );
+};
+
 const ProductsStackScreen = ({ navigation }) => {
   return (
     <Stack.Navigator>
@@ -389,6 +525,32 @@ const ShopLocationStackScreen = ({ navigation }) => {
   );
 };
 
+const RewardStackScreen = ({ navigation }) => {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen
+        name="Rewards"
+        component={RewardScreen}
+        options={{
+          headerStyle: {
+            backgroundColor: colors.primary,
+          },
+          headerTintColor: '#fff',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+          },
+          headerLeft: () => (
+            <MaterialCommunityIcons.Button name="menu" size={25}
+              backgroundColor={colors.primary}
+              onPress={() => navigation.openDrawer()}
+            ></MaterialCommunityIcons.Button>
+          )
+        }}
+      />
+    </Stack.Navigator>
+  );
+};
+
 const DashboardScreen = ({ navigation }) => {
   useEffect(() => {
     fcmService.registerAppWithFCM();
@@ -440,7 +602,6 @@ const DashboardScreen = ({ navigation }) => {
       console.log("[App] unRegister");
       fcmService.unRegister();
       localNotificationService.unregister();
-
     }
   }, [])
   return (
@@ -461,8 +622,14 @@ const DashboardScreen = ({ navigation }) => {
           name="Subscription"
           component={SubscriptionStackScreen} />
         <Drawer.Screen
+          name="BankDetails"
+          component={BankDetailsStackScreen} />
+        <Drawer.Screen
           name="ShopLocation"
           component={ShopLocationStackScreen} />
+        <Drawer.Screen
+          name="Rewards"
+          component={RewardStackScreen} />
         <Drawer.Screen
           name="WholeSaler"
           component={WholeSalerStackScreen} />
@@ -473,15 +640,19 @@ const DashboardScreen = ({ navigation }) => {
           name="Products"
           component={ProductsStackScreen} />
         <Drawer.Screen
+          name="RegisterVisitor"
+          component={RegisterVisitorStackScreen} />
+        <Drawer.Screen
+          name="VisitorHistory"
+          component={VisitorHistoryStackScreen} />
+        <Drawer.Screen
           name="Order History"
           component={OrderHistoryStackScreen} />
-        {/*
+
         <Drawer.Screen
-          name="Cart"
-          component={CartStackScreen} />
-        <Drawer.Screen
-          name="Live Order"
-          component={LiveOrderStackScreen} /> */}
+          name="Shop Billing"
+          component={ShopBillingStackScreen} />
+
       </Drawer.Navigator>
     </>
   );
